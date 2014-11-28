@@ -2,7 +2,7 @@
  * 一个简易的JS库，API与结构大部分仿照JQuery
  * 仅作为学习研究之用
  * author Anginwei
- * date 11-10-2014
+ * date 11-9-2014
  */
 (function(window) {
 	var dmc = (function() {
