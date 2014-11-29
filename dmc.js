@@ -2,7 +2,8 @@
  * 一个简易的JS库，API与结构大部分仿照JQuery
  * 仅作为学习研究之用
  * author Anginwei
- * date 11-9-2014
+ * date 11-10-2014
+ * version 1.2
  */
 (function(window) {
 	var dmc = (function() {
@@ -47,7 +48,7 @@
 			 * 返回 dom元素
 			 */
 			get: function(index) {
-				return this.context[index];
+				return !isNaN(index) ? this.context[index] : null;
 			},
 
 			/*
@@ -61,8 +62,7 @@
 			 * 返回匹配元素列表
 			 */
 			list: function() {
-			    // 返回拷贝，防止引用
-				return this.context.slice(0);
+				return this.context;
 			},
 
 			/*
@@ -130,7 +130,8 @@
 			},
 
 			/*
-			 * 存储数据用，运作模式同css
+			 * 存储数据，运作模式同css
+			 * 不同的是参数可以为空，为空的话则返回数据对象
 			 */
 			data: function(name, value) {
 				var length = arguments.length;
@@ -141,8 +142,7 @@
 					case 1:
 						switch (dmc.type(name)) {
 							case "string":
-								return this.length === 0 || !this.context[0]._data ? null :
-									this.context[0]._data[name];
+								return this.context[0]._data ? this.context[0]._data[name] : null;
 								break;
 							case "object":
 								for (var property in name) {
@@ -166,16 +166,27 @@
 			/*
 			 * 如果value为空，则返回匹配元素中第一个元素innerHTML的值
 			 * value不为空，则设置匹配元素中所有元素innerHTML的值为value
+			 * value可以为函数 $(selector).html(function(content, index))
 			 */
 			html: function(value) {
-				if (dmc.isUndefined(value)) {
-					return this.length ? this.context[0].innerHTML : "";
-				} else {
-					this.context.forEach(function(element) {
-						element.innerHTML = value;
-					});
+				switch (dmc.type(value)) {
+					case "undefined":
+						return this.length ? this.context[0].innerHTML : "";
+						break;
+					case "string":
+						this.context.forEach(function(element) {
+							element.innerHTML = value;
+						});
+						break;
+					case "function":
+						this.context.forEach(function(element, index) {
+							value.call(element, element.innerHTML, index);
+						});
+						break;
+					default:
+						return this;
+						break;
 				}
-				return this;
 			},
 
 			/*
@@ -341,6 +352,44 @@
 						element.value = value;
 					})
 				}
+				return this;
+			},
+
+			/*
+			 * 修改匹配元素为下一个同胞元素
+			 */
+			next: function() {
+				var list = [],
+					pos;
+				this.context.forEach(function(element) {
+				    pos = element;
+					do {
+						pos = pos.nextSibling;
+					} while (pos.nodeType != 1 || !pos);
+					if (pos) {
+    					list.push(pos);
+					}
+				});
+				this.context = list;
+				return this;
+			},
+
+			/*
+			 * 修改匹配元素为上一个同胞元素
+			 */
+			previous: function() {
+				var list = [],
+					pos;
+				this.context.forEach(function(element) {
+				    pos = element;
+					do {
+						pos = pos.nextSibling;
+					} while (pos.nodeType != 1 || !pos);
+                    if (pos) {
+                        list.push(pos);
+                    }
+				});
+				this.context = list;
 				return this;
 			},
 
