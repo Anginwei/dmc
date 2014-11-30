@@ -2,20 +2,18 @@
  * 一个简易的JS库，API与结构大部分仿照JQuery
  * 仅作为学习研究之用
  * author Anginwei
- * date 11-10-2014
- * version 1.2
+ * date 11-30-2014
+ * version 1.3
  */
 (function(window) {
 	var dmc = (function() {
 
 		var dmc = function(selector, context) {
-			return new _dmc.fn.init(selector, context);
+			return new dmc.fn.init(selector, context);
 		}
 
-		function _dmc() {}
-			// 为_dmc.prototype取别名，方便编码
-		_dmc.fn = _dmc.prototype = {
-			constructor: _dmc,
+		dmc.fn = dmc.prototype = {
+			constructor: dmc,
 
 			/*
 			 * 初始化dmc对象
@@ -44,18 +42,49 @@
 			},
 
 			/*
-			 * 获取结果集中的元素
-			 * 返回 dom元素
+			 * 扩展dmc原型
+			 */
+			extend: function(source, overwrite) {
+				return dmc.extend(source, dmc.fn, overwrite);
+			}
+		}; // end of dmc.prototype
+		dmc.prototype.init.prototype = dmc.fn;
+
+		/*
+		 * 扩展目标对象，overwrite为true则覆盖原目标中的同名属性，deep为ture则深拷贝
+		 * overwrite,deep默认为true，目标对象默认为dmc全局对象
+		 * 参数 扩展对象，[目标对象]，[覆盖]
+		 * 返回 目标对象
+		 */
+		dmc.extend = function(source, target, overwrite) {
+			overwrite = overwrite === undefined && true;
+			target = arguments[1] || this;
+			if (typeof source === "object" && !(source instanceof Array)) {
+				for (var property in source) {
+					var copy = source[property];
+					if (overwrite || !(property in target)) {
+						if (typeof copy === "object") {
+							target[property] = arguments.callee(target[property] || {}, copy);
+						} else {
+							target[property] = copy;
+						}
+					}
+				}
+			}
+			return target;
+		};
+
+		/***********************************************************************************************************
+		 * 原型扩展
+		 * dom元素
+		 */
+		dmc.fn.extend({
+
+			/*
+			 * 返回结果集中指定位置的元素
 			 */
 			get: function(index) {
 				return !isNaN(index) ? this.context[index] : null;
-			},
-
-			/*
-			 * 获取包含指定结果集合的dmc对象
-			 */
-			eq: function(index) {
-				return dmc(this.get(index));
 			},
 
 			/*
@@ -70,140 +99,73 @@
 			 */
 			length: function() {
 				return this.context.length;
-			},
+			}
+		}); // end of dmc.fn.extend()----dom元素
+
+		/*
+		 * 原型扩展
+		 * 筛选
+		 */
+		dmc.fn.extend({
 
 			/*
-			 * 对结果集中的每个元素调用指定函数
+			 * 将匹配集合缩减为指定索引的位置
 			 */
-			each: function(fn) {
-				if (dmc.isFunction(fn)) {
-					this.context.forEach(function(element, index) {
-						fn.call(element, index, element);
-					});
-				}
+			eq: function(index) {
+				this.context = [this.get(index)];
+				return this;
+			},
+			/*
+			 * 将匹配元素缩减至指定范围
+			 */
+			slice: function(start, end) {
+				this.context = this.context.slice(start, end);
+				return this;
+			},
+			/*
+			 * 修改匹配元素为下一个同胞元素
+			 */
+			next: function() {
+				var list = [],
+					pos;
+				this.context.forEach(function(element) {
+					pos = element;
+					do {
+						pos = pos.nextSibling;
+					} while (pos.nodeType != 1 || !pos);
+					if (pos) {
+						list.push(pos);
+					}
+				});
+				this.context = list;
 				return this;
 			},
 
 			/*
-			 * 如果只有一个参数，则返回匹配集合中第一个元素对应
-			 * 的css值，如果有两个参数，则对匹配集合中所有元素设置相应值
-			 * 可以只传入一个包含名值对的对象
+			 * 修改匹配元素为上一个同胞元素
 			 */
-			css: function(name, value) {
-				var length = arguments.length;
-				if (!this.length) {
-					return this;
-				}
-				switch (length) {
-					case 0:
-						dmc.error("css参数不能为空");
-						break;
-					case 1:
-						switch (dmc.type(name)) {
-							case "string":
-								name == "float" &&
-									(name = this.context[0].style.cssFloat !== undefined ? "cssFloat" : "styleFloat");
-								return this.context[0].currentStyle ? this.context[0].currentStyle[name] :
-									window.getComputedStyle(this.context[0], null)[name];
-								break;
-							case "object":
-								for (var property in name) {
-									this.css(property, name[property]);
-								}
-								break;
-							default:
-								break;
-						}
-						break;
-					default:
-						if (dmc.type(name, "string")) {
-							name == "float" &&
-								(name = this.context[0].style.cssFloat !== undefined ? "cssFloat" : "styleFloat");
-							value += ((Number(value) || value == 0) ? "px" : "");
-							this.context.forEach(function(element) {
-								element.style[name] = value;
-							});
-						}
-						break;
-				}
+			previous: function() {
+				var list = [],
+					pos;
+				this.context.forEach(function(element) {
+					pos = element;
+					do {
+						pos = pos.nextSibling;
+					} while (pos.nodeType != 1 || !pos);
+					if (pos) {
+						list.push(pos);
+					}
+				});
+				this.context = list;
 				return this;
-			},
+			}
+		}); // end of dmc.fn.extend()----筛选
 
-			/*
-			 * 存储数据，运作模式同css
-			 * 不同的是参数可以为空，为空的话则返回数据对象
-			 */
-			data: function(name, value) {
-				var length = arguments.length;
-				switch (length) {
-					case 0:
-						dmc.error("data参数不能为空");
-						break;
-					case 1:
-						switch (dmc.type(name)) {
-							case "string":
-								return this.context[0]._data ? this.context[0]._data[name] : null;
-								break;
-							case "object":
-								for (var property in name) {
-									this.data(property, name[property]);
-								}
-								break;
-							default:
-								break;
-						}
-						break;
-					default:
-						this.context.forEach(function(element) {
-							element._data = element._data || {};
-							element._data[name] = value;
-						});
-						break;
-				}
-				return this;
-			},
-
-			/*
-			 * 如果value为空，则返回匹配元素中第一个元素innerHTML的值
-			 * value不为空，则设置匹配元素中所有元素innerHTML的值为value
-			 * value可以为函数 $(selector).html(function(content, index))
-			 */
-			html: function(value) {
-				switch (dmc.type(value)) {
-					case "undefined":
-						return this.length ? this.context[0].innerHTML : "";
-						break;
-					case "string":
-						this.context.forEach(function(element) {
-							element.innerHTML = value;
-						});
-						break;
-					case "function":
-						this.context.forEach(function(element, index) {
-							value.call(element, element.innerHTML, index);
-						});
-						break;
-					default:
-						return this;
-						break;
-				}
-			},
-
-			/*
-			 * 同html，只是不读取标签内容
-			 * 写模式与html完全相同
-			 */
-			text: function(value) {
-				if (dmc.isUndefined(value)) {
-					return this.length ? this.context[0].innerHTML.replace(/\<.*?\>/g, "") : "";
-				} else {
-					this.context.forEach(function(element) {
-						element.innerHTML = value;
-					});
-				}
-				return this;
-			},
-
+		/***********************************************************************************************************
+		 * 原型扩展
+		 * 属性操作
+		 */
+		dmc.fn.extend({
 			/*
 			 * 运行模式同css方法
 			 */
@@ -354,49 +316,59 @@
 				}
 				return this;
 			},
+		});
+
+		/***********************************************************************************************************
+		 * 原型扩展
+		 * 文档操作
+		 */
+		dmc.fn.extend({
 
 			/*
-			 * 修改匹配元素为下一个同胞元素
+			 * 如果value为空，则返回匹配元素中第一个元素innerHTML的值
+			 * value不为空，则设置匹配元素中所有元素innerHTML的值为value
+			 * value可以为函数 $(selector).html(function(content, index))
 			 */
-			next: function() {
-				var list = [],
-					pos;
-				this.context.forEach(function(element) {
-				    pos = element;
-					do {
-						pos = pos.nextSibling;
-					} while (pos.nodeType != 1 || !pos);
-					if (pos) {
-    					list.push(pos);
-					}
-				});
-				this.context = list;
-				return this;
+			html: function(value) {
+				switch (dmc.type(value)) {
+					case "undefined":
+						return this.length ? this.context[0].innerHTML : "";
+						break;
+					case "string":
+						this.context.forEach(function(element) {
+							element.innerHTML = value;
+						});
+						break;
+					case "function":
+						this.context.forEach(function(element, index) {
+							value.call(element, element.innerHTML, index);
+						});
+						break;
+					default:
+						return this;
+						break;
+				}
 			},
 
 			/*
-			 * 修改匹配元素为上一个同胞元素
+			 * 同html，只是不读取标签内容
+			 * 写模式与html完全相同
 			 */
-			previous: function() {
-				var list = [],
-					pos;
-				this.context.forEach(function(element) {
-				    pos = element;
-					do {
-						pos = pos.nextSibling;
-					} while (pos.nodeType != 1 || !pos);
-                    if (pos) {
-                        list.push(pos);
-                    }
-				});
-				this.context = list;
+			text: function(value) {
+				if (dmc.isUndefined(value)) {
+					return this.length ? this.context[0].innerHTML.replace(/\<.*?\>/g, "") : null;
+				} else {
+					this.context.forEach(function(element) {
+						element.innerHTML = value;
+					});
+				}
 				return this;
 			},
 
 			/*
 			 * 对匹配元素后方插入内容
 			 * 内容可以为dmc对象，字符串，元素
-			 * 若为dmc对象，则将对象中所有元素插入
+			 * 若为dmc对象，则将对象中所有匹配元素插入
 			 */
 			append: function(content) {
 				if (!dmc.isUndefined(content)) {
@@ -422,35 +394,14 @@
 				return this;
 			},
 
-			show: function() {
-				var status;
-				this.context.forEach(function(element) {
-					if ($(element).css("display") == "none") {
-						status = $(element).data("displayState") || "block";
-						$(element).css("display", status);
-					}
-				});
-				return this;
-			},
-
-			hide: function() {
-				this.context.forEach(function(element) {
-					$this = $(element);
-					if ($this.css("display") != "none") {
-						$this.data("displayState", $this.css("display")).css("display", "none");
-					}
-				});
-				return this;
-			},
-
 			/*
 			 * 对匹配元素添加包裹标签
 			 */
 			wrap: function(tagName) {
 				if (dmc.type(tagName, "string")) {
+					var temp = "<tag>*</tag>";
 					this.context.forEach(function(element) {
-						element.outerHTML =
-							"<" + tagName + ">" + element.outerHTML + "</" + tagName + ">";
+						element.outerHTML = temp.replace(/\*/, element.outerHTML).replace(/tag/g, tagName);
 					});
 				}
 				return this;
@@ -492,7 +443,113 @@
 					});
 				}
 				return this;
+			}
+		}); // end of dmc.fn.extend()----文档操作
+
+		/***********************************************************************************************************
+		 * 原型扩展
+		 * css操作
+		 */
+		dmc.fn.extend({
+
+			/*
+			 * 如果只有一个参数，则返回匹配集合中第一个元素对应
+			 * 的css值，如果有两个参数，则对匹配集合中所有元素设置相应值
+			 * 可以只传入一个包含名值对的对象
+			 */
+			css: function(name, value) {
+				var length = arguments.length;
+				if (!this.length) {
+					return this;
+				}
+				switch (length) {
+					case 0:
+						dmc.error("css参数不能为空");
+						break;
+					case 1:
+						switch (dmc.type(name)) {
+							case "string":
+								name == "float" &&
+									(name = this.context[0].style.cssFloat !== undefined ? "cssFloat" : "styleFloat");
+								return this.context[0].currentStyle ? this.context[0].currentStyle[name] :
+									window.getComputedStyle(this.context[0], null)[name];
+								break;
+							case "object":
+								for (var property in name) {
+									this.css(property, name[property]);
+								}
+								break;
+							default:
+								break;
+						}
+						break;
+					default:
+						if (dmc.type(name, "string")) {
+							name == "float" &&
+								(name = this.context[0].style.cssFloat !== undefined ? "cssFloat" : "styleFloat");
+							value += ((Number(value) || value == 0) ? "px" : "");
+							this.context.forEach(function(element) {
+								element.style[name] = value;
+							});
+						}
+						break;
+				}
+				return this;
+			}
+		}); // end of dmc.fn.extend()----css操作
+
+		/***********************************************************************************************************
+		 * 原型扩展
+		 * 遍历
+		 */
+		dmc.fn.extend({
+
+			/*
+			 * 对结果集中的每个元素调用指定函数
+			 */
+			each: function(fn) {
+				if (dmc.isFunction(fn)) {
+					this.context.forEach(function(element, index) {
+						fn.call(element, index, element);
+					});
+				}
+				return this;
+			}
+		}); // end of dmc.fn.extend()----遍历
+
+		/***********************************************************************************************************
+		 * 原型扩展
+		 * 效果
+		 */
+		dmc.fn.extend({
+
+			show: function() {
+				var status;
+				this.context.forEach(function(element) {
+					if ($(element).css("display") == "none") {
+						status = $(element).data("displayState") || "block";
+						$(element).css("display", status);
+					}
+				});
+				return this;
 			},
+
+			hide: function() {
+				this.context.forEach(function(element) {
+					$this = $(element);
+					if ($this.css("display") != "none") {
+						$this.data("displayState", $this.css("display")).css("display", "none");
+					}
+				});
+				return this;
+			}
+		}); // end of dmc.fn.extend()----效果
+
+		/***********************************************************************************************************
+		 * 原型扩展
+		 * 事件
+		 */
+		dmc.fn.extend({
 
 			/*
 			 * 为匹配元素绑定事件
@@ -512,44 +569,142 @@
 			 */
 			click: function(fn) {
 				return this.bind("click", fn);
+			}
+		}); // end of dmc.fn.extend()----事件
+
+		/***********************************************************************************************************
+		 * 原型扩展
+		 * 其他
+		 */
+		dmc.fn.extend({
+			/*
+			 * 存储数据，运作模式同css
+			 * 不同的是参数可以为空，为空的话则返回数据对象
+			 */
+			data: function(name, value) {
+				var length = arguments.length;
+				switch (length) {
+					case 0:
+						dmc.error("data参数不能为空");
+						break;
+					case 1:
+						switch (dmc.type(name)) {
+							case "string":
+								return this.context[0]._data ? this.context[0]._data[name] : null;
+								break;
+							case "object":
+								for (var property in name) {
+									this.data(property, name[property]);
+								}
+								break;
+							default:
+								break;
+						}
+						break;
+					default:
+						this.context.forEach(function(element) {
+							element._data = element._data || {};
+							element._data[name] = value;
+						});
+						break;
+				}
+				return this;
+			}
+
+		}); // end of dmc.fn.extend()----其他
+
+		/***********************************************************************************************************
+		 * 全局扩展
+		 */
+		dmc.extend({
+
+			/*
+			 * 常用类型检测
+			 */
+			type: function(obj, type) {
+				var length = arguments.length;
+				switch (length) {
+					case 0:
+						dmc.error("dmc.type参数不能为空");
+					case 1:
+						return typeof obj;
+					default: // 有两个参数时
+						if (typeof type !== "string") {
+							dmc.error("dmc.type参数类型错误");
+						}
+						return typeof obj === type;
+				}
+			},
+			instance: function(obj, objName) {
+				if (!dmc.type(obj, "undefined")) {
+					return obj instanceof objName;
+				}
+				dmc.error("dmc.instance参数类型错误");
+			},
+			isUndefined: function(obj) {
+				return dmc.type(obj, "undefined");
+			},
+			isFunction: function(obj) {
+				return dmc.type(obj, "function");
+			},
+			isArray: function(obj) {
+				return toString.call(obj) === "[object Array]";
+			},
+			error: function(msg) {
+				throw new Error(msg);
 			},
 
 			/*
-			 * 扩展dmc原型
-			 * 参数 扩展对象，[覆盖]，[深拷贝]
-			 * 返回 dmc对象
+			 * 表单序列化
+			 * 参数 表单元素
 			 */
-			extend: function(source, overwrite) {
-				return dmc.extend(source, _dmc.fn, overwrite);
-			}
-		}; // end of _dmc.prototype
-		// 使new _dmc.prototype.init()指向正确
-		dmc.fn = _dmc.prototype.init.prototype = _dmc.fn;
-		dmc.version = "1.0";
-
-		/*
-		 * 扩展目标对象，overwrite为true则覆盖原目标中的同名属性，deep为ture则深拷贝
-		 * overwrite,deep默认为true，目标对象默认为dmc全局对象
-		 * 参数 扩展对象，[目标对象]，[覆盖]
-		 * 返回 目标对象
-		 */
-		dmc.extend = function(source, target, overwrite) {
-			overwrite = overwrite === undefined && true;
-			target = arguments[1] || this;
-			if (typeof source === "object" && !(source instanceof Array)) {
-				for (var property in source) {
-					var copy = source[property];
-					if (overwrite || !(property in target)) {
-						if (typeof copy === "object") {
-							target[property] = arguments.callee(target[property] || {}, copy);
-						} else {
-							target[property] = copy;
-						}
+			serialize: function(form) {
+				if (dmc.isUndefined(form) || form.nodeType != 1) {
+					dmc.error("dmc.serialize参数错误");
+				}
+				var
+					parts = [],
+					opt,
+					optVal = "",
+					element;
+				for (var i = 0, length = form.elements.length; i < length; i++) {
+					element = form.elements[i];
+					switch (element.type) {
+						case "undefined":
+						case "file":
+						case "submit":
+						case "reset":
+						case "button":
+							break;
+						case "select-one":
+						case "select-multiple":
+							if (element.name.length) {
+								for (var j = 0, optLen = element.options.length; j < optLen; j++) {
+									opt = element.options[j];
+									if (opt.selected) {
+										optVal = opt.hasAttribute ?
+											(opt.hasAttribute("value") ? opt.value : opt.text) :
+											(opt.attibutes["value"].specified ? opt.value : opt.text);
+										parts.push(encodeURIComponent(element.name) + "=" + encodeURIComponent(optVal));
+									}
+								}
+							}
+							break;
+						case "radio":
+						case "checkbox":
+							if (!element.checked) { // 跳过未选择的
+								break;
+							}
+						default:
+							if (element.name.length) {
+								parts.push(encodeURIComponent(element.name) + "=" + encodeURIComponent(element.value));
+							}
+							break;
 					}
 				}
+				return parts.join("&");
 			}
-			return target;
-		};
+		}); // end of dmc.extend()
 
 		/*
 		 * 浏览器特性
@@ -703,95 +858,6 @@
 				}
 			}
 		}; // end of Ajax
-		dmc.extend({
-
-			/*
-			 * 常用类型检测
-			 */
-			type: function(obj, type) {
-				var length = arguments.length;
-				switch (length) {
-					case 0:
-						dmc.error("dmc.type参数不能为空");
-					case 1:
-						return typeof obj;
-					default: // 有两个参数时
-						if (typeof type !== "string") {
-							dmc.error("dmc.type参数类型错误");
-						}
-						return typeof obj === type;
-				}
-			},
-			instance: function(obj, objName) {
-				if (!dmc.type(obj, "undefined")) {
-					return obj instanceof objName;
-				}
-				dmc.error("dmc.instance参数类型错误");
-			},
-			isUndefined: function(obj) {
-				return dmc.type(obj, "undefined");
-			},
-			isFunction: function(obj) {
-				return dmc.type(obj, "function");
-			},
-			isArray: function(obj) {
-				return toString.call(obj) === "[object Array]";
-			},
-			error: function(msg) {
-				throw new Error(msg);
-			},
-
-			/*
-			 * 表单序列化
-			 * 参数 表单元素
-			 */
-			serialize: function(form) {
-				if (dmc.isUndefined(form) || form.nodeType != 1) {
-					dmc.error("dmc.serialize参数错误");
-				}
-				var
-					parts = [],
-					opt,
-					optVal = "",
-					element;
-				for (var i = 0, length = form.elements.length; i < length; i++) {
-					element = form.elements[i];
-					switch (element.type) {
-						case "undefined":
-						case "file":
-						case "submit":
-						case "reset":
-						case "button":
-							break;
-						case "select-one":
-						case "select-multiple":
-							if (element.name.length) {
-								for (var j = 0, optLen = element.options.length; j < optLen; j++) {
-									opt = element.options[j];
-									if (opt.selected) {
-										optVal = opt.hasAttribute ?
-											(opt.hasAttribute("value") ? opt.value : opt.text) :
-											(opt.attibutes["value"].specified ? opt.value : opt.text);
-										parts.push(encodeURIComponent(element.name) + "=" + encodeURIComponent(optVal));
-									}
-								}
-							}
-							break;
-						case "radio":
-						case "checkbox":
-							if (!element.checked) { // 跳过未选择的
-								break;
-							}
-						default:
-							if (element.name.length) {
-								parts.push(encodeURIComponent(element.name) + "=" + encodeURIComponent(element.value));
-							}
-							break;
-					}
-				}
-				return parts.join("&");
-			}
-		}); // end of extend()
 
 		/*
 		 * 扩充原生对象
