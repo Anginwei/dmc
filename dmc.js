@@ -52,7 +52,7 @@
 
 		/*
 		 * 扩展目标对象，overwrite为true则覆盖原目标中的同名属性，deep为ture则深拷贝
-		 * overwrite,deep默认为true，目标对象默认为dmc全局对象
+		 * overwrite默认为true，目标对象默认为dmc全局对象
 		 * 参数 扩展对象，[目标对象]，[覆盖]
 		 * 返回 目标对象
 		 */
@@ -122,6 +122,7 @@
 				this.context = this.context.slice(start, end);
 				return this;
 			},
+
 			/*
 			 * 修改匹配元素为下一个同胞元素
 			 */
@@ -192,7 +193,7 @@
 								break;
 						}
 						break;
-					default:
+					default: // 两个参数
 						if (dmc.type(name, "string")) {
 							this.context.forEach(function(element) {
 								element.setAttribute(name, value);
@@ -315,7 +316,7 @@
 					})
 				}
 				return this;
-			},
+			}
 		});
 
 		/***********************************************************************************************************
@@ -351,7 +352,7 @@
 			},
 
 			/*
-			 * 同html，只是不读取标签内容
+			 * 同html，读取的值会去除内部标签，但不去除标签内容
 			 * 写模式与html完全相同
 			 */
 			text: function(value) {
@@ -408,7 +409,7 @@
 			},
 
 			/*
-			 * 在匹配元素之后插入内容，可以指定位置
+			 * 在匹配元素之前插入内容，可以指定位置
 			 * 当pos为in时，于*位置插入内容
 			 * 当pos为out时，于^位置插入内容
 			 * eg.  ^<p>*test</p>
@@ -555,10 +556,10 @@
 			 * 为匹配元素绑定事件
 			 * 参数 事件类型，处理函数
 			 */
-			bind: function(type, fn) {
-				if (dmc.type(type, "string") && dmc.isFunction(fn)) {
+			bind: function(type, callback) {
+				if (dmc.type(type, "string") && dmc.isFunction(callback)) {
 					this.context.forEach(function(element) {
-						dmc.Event.add(element, type, fn);
+						dmc.Event.add(element, type, callback);
 					});
 				}
 				return this;
@@ -567,8 +568,8 @@
 			/*
 			 * 单击事件
 			 */
-			click: function(fn) {
-				return this.bind("click", fn);
+			click: function(callback) {
+				return this.bind("click", callback);
 			}
 		}); // end of dmc.fn.extend()----事件
 
@@ -579,7 +580,6 @@
 		dmc.fn.extend({
 			/*
 			 * 存储数据，运作模式同css
-			 * 不同的是参数可以为空，为空的话则返回数据对象
 			 */
 			data: function(name, value) {
 				var length = arguments.length;
@@ -650,6 +650,7 @@
 			isArray: function(obj) {
 				return toString.call(obj) === "[object Array]";
 			},
+			// 内部方法
 			error: function(msg) {
 				throw new Error(msg);
 			},
@@ -833,7 +834,7 @@
 			get: function(url, callback) {
 				if (dmc.type(url, "string") && dmc.isFunction(callback)) {
 					var xhr = dmc.Ajax.createXHR();
-					dmc.Event.addHandler(xhr, "readystatechange", function() {
+					dmc.Event.add(xhr, "readystatechange", function() {
 						dmc.Ajax.isReady(xhr) && callback(xhr.responseText);
 					});
 					xhr.open("get", url, true);
@@ -843,18 +844,16 @@
 
 			/*
 			 * 请求数据，成功后会将responseText存入回调函数第一个参数中
-			 * 查询字符串为空时，请用""代替
-			 * 参数 请求地址，查询字符串，请求完成后执行的调用的函数
 			 */
-			post: function(url, data, callback) {
+			post: function(url, callback, data) {
 				if (dmc.type(url, "string") && dmc.type(data, "string") && dmc.isFunction(callback)) {
 					var xhr = dmc.Ajax.createXHR();
-					dmc.Event.addHandler(xhr, "readystatechange", function() {
+					dmc.Event.add(xhr, "readystatechange", function() {
 						dmc.Ajax.isReady(xhr) && callback(xhr.responseText);
 					});
 					xhr.open("post", url, true);
 					xhr.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
-					xhr.send(data);
+					xhr.send(dmc.isUndefined(data) ? "" : data);
 				}
 			}
 		}; // end of Ajax
@@ -863,7 +862,7 @@
 		 * 扩充原生对象
 		 */
 		Array.prototype.forEach = Array.prototype.forEach || function(fn) {
-			for (var i = 0, length = context.length; i < length; i++) {
+			for (var i = 0, length = this.length; i < length; i++) {
 				fn(this[i], i);
 			}
 		};
