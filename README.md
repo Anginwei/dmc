@@ -15,5 +15,6 @@ dmc初始化方法有两个参数`dmc(selector, context)`。
 
     var main = document.getElementByName("main");
     $(".nav", main);
+其他方法请查看[API文档](http://anginwei.github.io/dmc_API/)。
 #许可#
 许可？这是什么东西？What the fuck is this?
